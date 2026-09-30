@@ -30,6 +30,25 @@
       padding: 24px;
     }
 
+    /* === 畫面最上方更新時間列 === */
+    .update-banner {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      padding: 6px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 6px;
+    }
+    .update-banner span {
+      color: var(--success-text);
+      font-weight: 600;
+    }
+
     header {
       display: flex;
       justify-content: space-between;
@@ -715,6 +734,11 @@
 </head>
 <body class="read-only">
 
+  <!-- 畫面最上方的上次更新時間記錄列 -->
+  <div class="update-banner">
+    上次更新時間：<span id="last-updated-time">載入中...</span>
+  </div>
+
   <header>
     <div class="title-group">
       <!-- 華麗光暈頭像區塊 -->
@@ -851,8 +875,9 @@
     const db = getFirestore(app);
     const auth = getAuth(app);
 
-    // 全域自訂欄位
+    // 全域自訂欄位與最後更新時間
     let customColumns = [];
+    let lastUpdatedTime = "尚無記錄";
 
     const defaultDatabase = {
       163: { name: "Nautilus", rarity: "Chronal" },
@@ -904,6 +929,7 @@
     const importFileInput = document.getElementById("import-file-input");
     const btnViewTable = document.getElementById("btn-view-table");
     const btnViewCard = document.getElementById("btn-view-card");
+    const lastUpdatedTimeSpan = document.getElementById("last-updated-time");
 
     // 交易助手 DOM
     const tradeBtn = document.getElementById("trade-btn");
@@ -1046,6 +1072,9 @@
       document.getElementById("stat-divine").innerText = `${divineCollected} / ${totalCount} (${Math.round((divineCollected / totalCount) * 100 || 0)}%)`;
       document.getElementById("stat-void").innerText = `${voidCollected} / ${totalCount} (${Math.round((voidCollected / totalCount) * 100 || 0)}%)`;
       document.getElementById("stat-count-total").innerText = astralCountSum;
+
+      // 更新畫面上顯示的時間
+      lastUpdatedTimeSpan.innerText = lastUpdatedTime;
     }
 
     // 狀態開關與修改功能繫結至全域
@@ -1123,10 +1152,22 @@
 
     async function syncToCloud() {
       try {
+        // 產生更新時的格式化日期時間字串 (YYYY-MM-DD HH:mm:ss)
+        const now = new Date();
+        lastUpdatedTime = now.getFullYear() + '-' +
+          String(now.getMonth() + 1).padStart(2, '0') + '-' +
+          String(now.getDate()).padStart(2, '0') + ' ' +
+          String(now.getHours()).padStart(2, '0') + ':' +
+          String(now.getMinutes()).padStart(2, '0') + ':' +
+          String(now.getSeconds()).padStart(2, '0');
+
         await setDoc(doc(db, "tracker", "progress"), { 
           items: itemsData,
-          customColumns: customColumns 
+          customColumns: customColumns,
+          lastUpdated: lastUpdatedTime
         }, { merge: true });
+        
+        render();
       } catch (e) {
         console.error("同步至 Firebase 失敗：", e);
       }
@@ -1138,6 +1179,7 @@
         const data = docSnap.data();
         if (data.items) itemsData = data.items;
         if (data.customColumns) customColumns = data.customColumns;
+        if (data.lastUpdated) lastUpdatedTime = data.lastUpdated;
         render();
       }
     });
@@ -1230,7 +1272,7 @@
 
     // JSON 備份與匯入
     document.getElementById("export-json-btn").onclick = () => {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ items: itemsData, customColumns: customColumns }, null, 2));
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ items: itemsData, customColumns: customColumns, lastUpdated: lastUpdatedTime }, null, 2));
       const a = document.createElement("a");
       a.href = dataStr;
       a.download = `backup_tac_${new Date().toISOString().slice(0,10)}.json`;
@@ -1247,6 +1289,7 @@
           const imported = JSON.parse(evt.target.result);
           if (imported.items) itemsData = imported.items;
           if (imported.customColumns) customColumns = imported.customColumns;
+          if (imported.lastUpdated) lastUpdatedTime = imported.lastUpdated;
           render();
           await syncToCloud();
           alert("備份資料成功匯入！");
