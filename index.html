@@ -4,9 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Roblox Throw a Coin — Collection Index Tracker</title>
-  <!-- 預先連線至 Firebase 與 CDN 以加速資源載入 -->
-  <link rel="preconnect" href="https://www.gstatic.com">
-  <link rel="preconnect" href="https://i.ibb.co">
   <style>
     :root {
       --bg-color: #0f172a;
@@ -739,14 +736,14 @@
 
   <!-- 畫面最上方的上次更新時間記錄列 -->
   <div class="update-banner">
-    <i class="fa-regular fa-clock"></i> 上次更新日期時間：<span id="last-update-time-text">讀取中...</span>
+    上次更新時間：<span id="last-updated-time">載入中...</span>
   </div>
 
   <header>
     <div class="title-group">
       <!-- 華麗光暈頭像區塊 -->
       <div class="avatar-wrapper">
-        <img src="https://i.ibb.co/vv6Dd3qw/test22.png" alt="Avatar" class="avatar-img" loading="lazy">
+        <img src="https://i.ibb.co/vv6Dd3qw/test22.png" alt="Avatar" class="avatar-img">
       </div>
       <h1>新竹九降風清水疾風俠 Roblox Throw a Coin — Collection Index Tracker</h1>
     </div>
@@ -880,7 +877,7 @@
 
     // 全域自訂欄位與最後更新時間
     let customColumns = [];
-    let window.updatedAt = null; // 對應時間格式化的全域變數
+    let lastUpdatedTime = "尚無記錄";
 
     const defaultDatabase = {
       163: { name: "Nautilus", rarity: "Chronal" },
@@ -932,6 +929,7 @@
     const importFileInput = document.getElementById("import-file-input");
     const btnViewTable = document.getElementById("btn-view-table");
     const btnViewCard = document.getElementById("btn-view-card");
+    const lastUpdatedTimeSpan = document.getElementById("last-updated-time");
 
     // 交易助手 DOM
     const tradeBtn = document.getElementById("trade-btn");
@@ -939,28 +937,6 @@
     const closeModalBtn = document.getElementById("modal-close-btn");
     const tradeTextOutput = document.getElementById("trade-text-output");
     const copyTradeBtn = document.getElementById("copy-trade-btn");
-
-    // ==========================================
-    // 1. 動態時間顯示相關函式
-    // ==========================================
-    window.formatDateTime = function(isoString) {
-      if (!isoString) return '尚無更新紀錄';
-      const d = new Date(isoString);
-      if (isNaN(d.getTime())) return isoString;
-      const yr = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, '0');
-      const day = String(d.getDate()).padStart(2, '0');
-      const hr = String(d.getHours()).padStart(2, '0');
-      const min = String(d.getMinutes()).padStart(2, '0');
-      return `${yr}年${m}月${day}日 ${hr}:${min}`;
-    };
-
-    window.updateTimeDisplay = function() {
-      const timeEl = document.getElementById('last-update-time-text');
-      if (timeEl) {
-        timeEl.innerText = window.updatedAt ? window.formatDateTime(window.updatedAt) : '尚未記錄';
-      }
-    };
 
     function renderHeader() {
       const headerRow = document.getElementById("table-header-row");
@@ -984,23 +960,18 @@
       });
     }
 
-    // ==========================================
-    // 2. 優化讀取與渲染速度 (使用 DocumentFragment 批次更新 DOM)
-    // ==========================================
     function render() {
       renderHeader();
       const query = searchInput.value.toLowerCase().trim();
-      
+      tbody.innerHTML = "";
+      cardContainer.innerHTML = "";
+
       let astralCountSum = 0;
       let astralCollected = 0;
       let divineCollected = 0;
       let voidCollected = 0;
 
       const sortedKeys = Object.keys(itemsData).sort((a, b) => itemsData[a].id - itemsData[b].id);
-
-      // 建立 DocumentFragment 以減少頁面重繪 (Reflow/Repaint)，大幅提升渲染效能
-      const tableFragment = document.createDocumentFragment();
-      const cardFragment = document.createDocumentFragment();
 
       sortedKeys.forEach(key => {
         const item = itemsData[key];
@@ -1017,7 +988,7 @@
         const rarityClass = `rarity-${safeRarityName}`;
         const isUnlocked = item.astral || item.divine || item.void || (item.astralCount > 0);
 
-        // 1. 組合表格列
+        // 1. 渲染表格列
         const tr = document.createElement("tr");
         let extraTdHTML = "";
         
@@ -1049,7 +1020,7 @@
           <td class="editable-cell" ondblclick="editField('${key}', 'name')" title="登入後雙擊修改名稱"><strong>${item.name}</strong></td>
           <td class="editable-cell" style="text-align: left; padding-left: 10px;" ondblclick="editField('${key}', 'imageUrl')" title="登入後雙擊設定圖片網址">
             <div class="item-img-container">
-              ${item.imageUrl ? `<img src="${item.imageUrl}" class="item-img" alt="${item.name}" loading="lazy">` : `<span class="img-placeholder">+圖片</span>`}
+              ${item.imageUrl ? `<img src="${item.imageUrl}" class="item-img" alt="${item.name}">` : `<span class="img-placeholder">+圖片</span>`}
             </div>
           </td>
           <td class="editable-cell" ondblclick="editField('${key}', 'rarity')" title="登入後雙擊修改稀有度">
@@ -1073,16 +1044,16 @@
           </td>
           ${extraTdHTML}
         `;
-        tableFragment.appendChild(tr);
+        tbody.appendChild(tr);
 
-        // 2. 組合卡牌相簿
+        // 2. 渲染卡牌相簿
         const card = document.createElement("div");
         card.className = `item-card ${isUnlocked ? 'unlocked fx-' + safeRarityName : 'locked'}`;
         card.innerHTML = `
           ${!isUnlocked ? `<div class="lock-icon">🔒</div>` : ''}
           <div class="card-id">#${item.id}</div>
           <div class="card-img-wrapper">
-            ${item.imageUrl ? `<img src="${item.imageUrl}" class="card-img" alt="${item.name}" loading="lazy">` : `<span class="img-placeholder" style="font-size:2rem;">❓</span>`}
+            ${item.imageUrl ? `<img src="${item.imageUrl}" class="card-img" alt="${item.name}">` : `<span class="img-placeholder" style="font-size:2rem;">❓</span>`}
           </div>
           <div class="card-title">${item.name}</div>
           <div><span class="rarity-tag ${rarityClass}">${item.rarity}</span></div>
@@ -1092,14 +1063,8 @@
             <span class="card-badge-item ${item.void ? 'active-void' : ''}">Void: ${item.void ? '✓' : '-'}</span>
           </div>
         `;
-        cardFragment.appendChild(card);
+        cardContainer.appendChild(card);
       });
-
-      // 一次性將 Fragment 插入 DOM，大幅加快畫面的渲染與反應速度
-      tbody.innerHTML = "";
-      tbody.appendChild(tableFragment);
-      cardContainer.innerHTML = "";
-      cardContainer.appendChild(cardFragment);
 
       // 更新儀表板數據
       const totalCount = sortedKeys.length;
@@ -1108,8 +1073,8 @@
       document.getElementById("stat-void").innerText = `${voidCollected} / ${totalCount} (${Math.round((voidCollected / totalCount) * 100 || 0)}%)`;
       document.getElementById("stat-count-total").innerText = astralCountSum;
 
-      // 更新動態時間顯示
-      window.updateTimeDisplay();
+      // 更新畫面上顯示的時間
+      lastUpdatedTimeSpan.innerText = lastUpdatedTime;
     }
 
     // 狀態開關與修改功能繫結至全域
@@ -1187,12 +1152,19 @@
 
     async function syncToCloud() {
       try {
-        window.updatedAt = new Date().toISOString(); // 記錄 ISO 時間供 formatDateTime 解析
+        // 產生更新時的格式化日期時間字串 (YYYY-MM-DD HH:mm:ss)
+        const now = new Date();
+        lastUpdatedTime = now.getFullYear() + '-' +
+          String(now.getMonth() + 1).padStart(2, '0') + '-' +
+          String(now.getDate()).padStart(2, '0') + ' ' +
+          String(now.getHours()).padStart(2, '0') + ':' +
+          String(now.getMinutes()).padStart(2, '0') + ':' +
+          String(now.getSeconds()).padStart(2, '0');
 
         await setDoc(doc(db, "tracker", "progress"), { 
           items: itemsData,
           customColumns: customColumns,
-          lastUpdated: window.updatedAt
+          lastUpdated: lastUpdatedTime
         }, { merge: true });
         
         render();
@@ -1207,7 +1179,7 @@
         const data = docSnap.data();
         if (data.items) itemsData = data.items;
         if (data.customColumns) customColumns = data.customColumns;
-        if (data.lastUpdated) window.updatedAt = data.lastUpdated;
+        if (data.lastUpdated) lastUpdatedTime = data.lastUpdated;
         render();
       }
     });
@@ -1256,14 +1228,7 @@
       tableViewContainer.style.display = "none";
     };
 
-    // 使用 debounce 或簡單判斷優化搜尋框輸入效能
-    let searchTimeout;
-    searchInput.oninput = () => {
-      clearTimeout(searchTimeout);
-      searchTimeout = setTimeout(() => {
-        render();
-      }, 150); // 延遲 150ms 執行篩選，避免每次按鍵都全量重新渲染
-    };
+    searchInput.oninput = () => render();
 
     // 交易助手 Modal 開關
     tradeBtn.onclick = () => {
@@ -1307,7 +1272,7 @@
 
     // JSON 備份與匯入
     document.getElementById("export-json-btn").onclick = () => {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ items: itemsData, customColumns: customColumns, lastUpdated: window.updatedAt }, null, 2));
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify({ items: itemsData, customColumns: customColumns, lastUpdated: lastUpdatedTime }, null, 2));
       const a = document.createElement("a");
       a.href = dataStr;
       a.download = `backup_tac_${new Date().toISOString().slice(0,10)}.json`;
@@ -1324,7 +1289,7 @@
           const imported = JSON.parse(evt.target.result);
           if (imported.items) itemsData = imported.items;
           if (imported.customColumns) customColumns = imported.customColumns;
-          if (imported.lastUpdated) window.updatedAt = imported.lastUpdated;
+          if (imported.lastUpdated) lastUpdatedTime = imported.lastUpdated;
           render();
           await syncToCloud();
           alert("備份資料成功匯入！");
@@ -1337,6 +1302,7 @@
 
     // ==================== 新增 / 刪除 列 (Item) ====================
 
+    // 1. ➕ 新增列 (物品)
     const addItemBtn = document.getElementById("add-item-btn");
     if (addItemBtn) {
       addItemBtn.onclick = async () => {
@@ -1363,6 +1329,7 @@
       };
     }
 
+    // 2. 🗑️ 刪除最後一列
     const deleteItemBtn = document.getElementById("delete-item-btn");
     if (deleteItemBtn) {
       deleteItemBtn.onclick = async () => {
@@ -1383,6 +1350,7 @@
 
     // ==================== 新增 / 刪除 欄 (Column) ====================
 
+    // 3. ➕ 新增欄位
     const addColBtn = document.getElementById("add-col-btn");
     if (addColBtn) {
       addColBtn.onclick = async () => {
@@ -1404,6 +1372,7 @@
       };
     }
 
+    // 4. 🗑️ 刪除自訂欄位
     const delColBtn = document.getElementById("del-col-btn");
     if (delColBtn) {
       delColBtn.onclick = async () => {
