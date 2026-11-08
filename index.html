@@ -258,7 +258,7 @@
 
     .dashboard {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       gap: 16px;
       margin-bottom: 24px;
     }
@@ -278,7 +278,7 @@
     }
 
     .stat-value {
-      font-size: 1.5rem;
+      font-size: 1.4rem;
       font-weight: 800;
       color: #0f172a;
     }
@@ -490,12 +490,18 @@
       border-radius: 12px;
       padding: 12px;
       text-align: center;
-      transition: transform 0.2s, box-shadow 0.2s;
+      transition: transform 0.2s, box-shadow 0.2s, opacity 0.3s;
       display: flex;
       flex-direction: column;
       align-items: center;
       overflow: hidden;
       user-select: none;
+    }
+
+    .item-card.unlocked {
+      opacity: 1;
+      border-color: #6366f1;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
     }
 
     .item-card:hover {
@@ -504,8 +510,9 @@
     }
 
     .item-card.locked {
-      opacity: 0.6;
+      opacity: 0.45;
       background: #f1f5f9;
+      filter: grayscale(80%);
     }
 
     .card-img-wrapper {
@@ -555,8 +562,8 @@
     }
 
     .card-badge-item {
-      font-size: 0.7rem;
-      padding: 2px 6px;
+      font-size: 0.68rem;
+      padding: 2px 5px;
       border-radius: 4px;
       font-weight: 700;
       background: #e2e8f0;
@@ -566,6 +573,7 @@
     .card-badge-item.active-astral { background: #dbeafe; color: #1e40af; border: 1px solid #3b82f6; }
     .card-badge-item.active-divine { background: #fef3c7; color: #78350f; border: 1px solid #f59e0b; }
     .card-badge-item.active-void { background: #f3e8ff; color: #6b21a8; border: 1px solid #a855f7; }
+    .card-badge-item.active-ghost { background: #e0e7ff; color: #3730a3; border: 1px solid #6366f1; }
 
     /* === 交易助手 Modal 面板 === */
     .modal-overlay {
@@ -700,6 +708,10 @@
         <div id="stat-void" class="stat-value">0 / 188 (0%)</div>
       </div>
       <div class="stat-card">
+        <div class="stat-title">Ghost 收集進度</div>
+        <div id="stat-ghost" class="stat-value">0 / 188 (0%)</div>
+      </div>
+      <div class="stat-card">
         <div class="stat-title">Astral 總數量</div>
         <div id="stat-count-total" class="stat-value">0</div>
       </div>
@@ -738,6 +750,7 @@
             <th style="width: 130px; text-align: center;">ASTRAL COUNT</th>
             <th style="width: 120px; text-align: center;">DIVINE</th>
             <th style="width: 120px; text-align: center;">VOID</th>
+            <th style="width: 120px; text-align: center;">GHOST</th>
           </tr>
         </thead>
         <tbody id="table-body">
@@ -836,6 +849,7 @@
         astralCount: 0,
         divine: false,
         void: false,
+        ghost: false,
         extraFields: {}
       };
     }
@@ -877,6 +891,7 @@
         <th style="width: 130px; text-align: center;">ASTRAL COUNT</th>
         <th style="width: 120px; text-align: center;">DIVINE</th>
         <th style="width: 120px; text-align: center;">VOID</th>
+        <th style="width: 120px; text-align: center;">GHOST</th>
       `;
       
       customColumns.forEach(col => {
@@ -898,6 +913,7 @@
       let astralCollected = 0;
       let divineCollected = 0;
       let voidCollected = 0;
+      let ghostCollected = 0;
 
       const sortedKeys = Object.keys(itemsData).sort((a, b) => itemsData[a].id - itemsData[b].id);
 
@@ -907,6 +923,7 @@
         if (item.astral) astralCollected++;
         if (item.divine) divineCollected++;
         if (item.void) voidCollected++;
+        if (item.ghost) ghostCollected++;
         astralCountSum += (item.astralCount || 0);
 
         const matchSearch = item.name.toLowerCase().includes(query) || String(item.id).includes(query);
@@ -914,7 +931,13 @@
 
         const safeRarityName = item.rarity ? item.rarity.toLowerCase().replace(/[^a-z0-9]/g, '') : 'common';
         const rarityClass = `rarity-${safeRarityName}`;
-        const isUnlocked = item.astral || item.divine || item.void || (item.astralCount > 0);
+        
+        // 判斷相簿亮燈機制：
+        // 當物品有填入名稱(且非預設)與圖案網址，或已被勾選收集/有計數時自動亮燈
+        const hasValidName = item.name && item.name.trim() !== "" && !item.name.startsWith("物品 #");
+        const hasValidImage = item.imageUrl && item.imageUrl.trim() !== "";
+        const isCollected = item.astral || item.divine || item.void || item.ghost || (item.astralCount > 0);
+        const isUnlocked = (hasValidName && hasValidImage) || isCollected;
 
         // 1. 渲染表格列
         const tr = document.createElement("tr");
@@ -970,6 +993,9 @@
           <td class="status-cell" onclick="toggleStatus('${key}', 'void')">
             <span class="badge ${item.void ? 'badge-collected' : 'badge-empty'}">${item.void ? '✓ 已收集' : '-'}</span>
           </td>
+          <td class="status-cell" onclick="toggleStatus('${key}', 'ghost')">
+            <span class="badge ${item.ghost ? 'badge-collected' : 'badge-empty'}">${item.ghost ? '✓ 已收集' : '-'}</span>
+          </td>
           ${extraTdHTML}
         `;
         tbody.appendChild(tr);
@@ -988,6 +1014,7 @@
             <span class="card-badge-item ${item.astral ? 'active-astral' : ''}">Astral: ${item.astral ? '✓' : '-'} (${item.astralCount || 0})</span>
             <span class="card-badge-item ${item.divine ? 'active-divine' : ''}">Divine: ${item.divine ? '✓' : '-'}</span>
             <span class="card-badge-item ${item.void ? 'active-void' : ''}">Void: ${item.void ? '✓' : '-'}</span>
+            <span class="card-badge-item ${item.ghost ? 'active-ghost' : ''}">Ghost: ${item.ghost ? '✓' : '-'}</span>
           </div>
         `;
         cardContainer.appendChild(card);
@@ -997,6 +1024,7 @@
       document.getElementById("stat-astral").innerText = `${astralCollected} / ${totalCount} (${Math.round((astralCollected / totalCount) * 100 || 0)}%)`;
       document.getElementById("stat-divine").innerText = `${divineCollected} / ${totalCount} (${Math.round((divineCollected / totalCount) * 100 || 0)}%)`;
       document.getElementById("stat-void").innerText = `${voidCollected} / ${totalCount} (${Math.round((voidCollected / totalCount) * 100 || 0)}%)`;
+      document.getElementById("stat-ghost").innerText = `${ghostCollected} / ${totalCount} (${Math.round((ghostCollected / totalCount) * 100 || 0)}%)`;
       document.getElementById("stat-count-total").innerText = astralCountSum;
 
       lastUpdatedTimeSpan.innerText = lastUpdatedTime;
@@ -1159,12 +1187,13 @@
       output += "-----------------------------\n";
       Object.keys(itemsData).forEach(k => {
         const item = itemsData[k];
-        if (item.astral || item.divine || item.void || item.astralCount > 0) {
+        if (item.astral || item.divine || item.void || item.ghost || item.astralCount > 0) {
           output += `#${item.id} ${item.name} (${item.rarity}): `;
           let tags = [];
           if (item.astral) tags.push(`Astral x${item.astralCount || 1}`);
           if (item.divine) tags.push("Divine");
           if (item.void) tags.push("Void");
+          if (item.ghost) tags.push("Ghost");
           output += tags.join(", ") + "\n";
         }
       });
@@ -1180,10 +1209,10 @@
 
     // CSV 匯出
     document.getElementById("export-csv-btn").onclick = () => {
-      let csvStr = "\uFEFFID,Name,Rarity,Astral,AstralCount,Divine,Void\n";
+      let csvStr = "\uFEFFID,Name,Rarity,Astral,AstralCount,Divine,Void,Ghost\n";
       Object.keys(itemsData).forEach(k => {
         const item = itemsData[k];
-        csvStr += `${item.id},"${item.name}","${item.rarity}",${item.astral ? "YES" : "NO"},${item.astralCount || 0},${item.divine ? "YES" : "NO"},${item.void ? "YES" : "NO"}\n`;
+        csvStr += `${item.id},"${item.name}","${item.rarity}",${item.astral ? "YES" : "NO"},${item.astralCount || 0},${item.divine ? "YES" : "NO"},${item.void ? "YES" : "NO"},${item.ghost ? "YES" : "NO"}\n`;
       });
       const blob = new Blob([csvStr], { type: "text/csv;charset=utf-8;" });
       const url = URL.createObjectURL(blob);
@@ -1241,6 +1270,7 @@
           astralCount: 0,
           divine: false,
           void: false,
+          ghost: false,
           extraFields: {}
         };
 
