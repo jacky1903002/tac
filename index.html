@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Roblox Throw a Coin — Collection Index Tracker</title>
+  <!-- 引入 SheetJS 用於產生真正的 Excel (.xlsx) 檔案 -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
   <style>
     :root {
       --bg-color: #ffffff;
@@ -214,6 +216,7 @@
       padding: 8px 16px;
       border-radius: 12px;
       border: 1px solid var(--border-color);
+      flex-wrap: wrap;
     }
 
     .auth-status {
@@ -226,11 +229,11 @@
       background-color: var(--accent);
       color: #fff;
       border: none;
-      padding: 8px 16px;
+      padding: 8px 14px;
       border-radius: 8px;
       cursor: pointer;
       font-weight: 700;
-      font-size: 0.875rem;
+      font-size: 0.85rem;
       transition: all 0.2s;
       text-decoration: none;
       display: inline-flex;
@@ -247,6 +250,10 @@
     .btn-danger:hover { background-color: #b91c1c; }
     .btn-success { background-color: #059669; color: #fff; }
     .btn-success:hover { background-color: #047857; }
+    .btn-excel { background-color: #15803d; color: #fff; }
+    .btn-excel:hover { background-color: #166534; }
+    .btn-pdf { background-color: #be123c; color: #fff; }
+    .btn-pdf:hover { background-color: #9f1239; }
 
     .btn-roblox {
       background: linear-gradient(135deg, #0284c7, #2563eb);
@@ -291,6 +298,13 @@
       align-items: center;
     }
 
+    .toolbar-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
     .search-input {
       background-color: #ffffff;
       border: 1px solid var(--border-color);
@@ -301,7 +315,7 @@
       font-weight: 600;
       outline: none;
       flex: 1;
-      min-width: 200px;
+      min-width: 220px;
     }
     .search-input:focus { border-color: var(--accent); }
 
@@ -643,6 +657,188 @@
       outline: none;
       margin-bottom: 16px;
     }
+
+    /* === PDF 匯出專屬完美列印樣式 === */
+    .print-section-header {
+      display: none;
+    }
+
+    @media print {
+      @page {
+        size: A4 portrait;
+        margin: 12mm 10mm;
+      }
+
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+
+      body {
+        padding: 0 !important;
+        background: #ffffff !important;
+      }
+
+      /* 隱藏非報表操作介面 */
+      .auth-modal-overlay,
+      .auth-box,
+      .toolbar,
+      .modal-overlay,
+      .count-btn {
+        display: none !important;
+      }
+
+      #main-app {
+        display: block !important;
+      }
+
+      .update-banner {
+        margin-bottom: 10px;
+        padding: 6px 12px;
+        font-size: 0.8rem;
+      }
+
+      header {
+        margin-bottom: 12px;
+      }
+
+      .avatar-wrapper {
+        width: 44px;
+        height: 44px;
+        animation: none !important;
+        box-shadow: none !important;
+      }
+
+      .title-group h1 {
+        font-size: 1.3rem !important;
+      }
+
+      /* 儀表板強制 5 欄並排 */
+      .dashboard {
+        display: grid !important;
+        grid-template-columns: repeat(5, 1fr) !important;
+        gap: 8px !important;
+        margin-bottom: 16px !important;
+      }
+
+      .stat-card {
+        padding: 8px 10px !important;
+        border-radius: 8px !important;
+      }
+
+      .stat-title {
+        font-size: 0.72rem !important;
+        margin-bottom: 2px !important;
+      }
+
+      .stat-value {
+        font-size: 1.05rem !important;
+      }
+
+      /* 區塊標題顯示 */
+      .print-section-header {
+        display: block !important;
+        font-size: 1.15rem;
+        font-weight: 800;
+        color: #0f172a;
+        border-left: 5px solid #4f46e5;
+        padding: 4px 0 4px 10px;
+        margin: 12px 0 10px 0;
+        background: #f8fafc;
+      }
+
+      /* 強制同時顯示表格與卡牌相簿 */
+      #table-view-container {
+        display: block !important;
+        max-height: none !important;
+        overflow: visible !important;
+        border: 1px solid #94a3b8 !important;
+        border-radius: 6px !important;
+      }
+
+      table {
+        width: 100% !important;
+        font-size: 0.78rem !important;
+      }
+
+      thead {
+        display: table-header-group; /* 跨頁自動重複表頭 */
+      }
+
+      tr {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+
+      th {
+        position: static !important;
+        padding: 8px 6px !important;
+        font-size: 0.72rem !important;
+        border-bottom: 1.5px solid #64748b !important;
+      }
+
+      td {
+        padding: 5px 6px !important;
+        font-size: 0.78rem !important;
+      }
+
+      .item-img-container {
+        width: 42px !important;
+        height: 42px !important;
+        border: 1px solid #cbd5e1 !important;
+      }
+
+      .rarity-tag, .badge {
+        padding: 2px 6px !important;
+        font-size: 0.7rem !important;
+      }
+
+      /* 卡牌相簿從全新一頁開始，整齊 5 欄網格 */
+      .print-card-page-break {
+        page-break-before: always !important;
+        break-before: page !important;
+      }
+
+      #card-view-container {
+        display: grid !important;
+        grid-template-columns: repeat(5, 1fr) !important;
+        gap: 10px !important;
+        padding: 0 !important;
+      }
+
+      .item-card {
+        break-inside: avoid !important;
+        page-break-inside: avoid !important;
+        padding: 8px !important;
+        border-radius: 8px !important;
+        box-shadow: none !important;
+        transform: none !important;
+      }
+
+      .item-card.locked {
+        opacity: 0.65 !important;
+        filter: grayscale(60%) !important;
+      }
+
+      .card-img-wrapper {
+        height: 70px !important;
+        margin: 4px 0 !important;
+      }
+
+      .card-title {
+        font-size: 0.8rem !important;
+      }
+
+      .card-badges {
+        gap: 3px !important;
+        margin-top: 4px !important;
+      }
+
+      .card-badge-item {
+        font-size: 0.6rem !important;
+        padding: 1px 4px !important;
+      }
+    }
   </style>
 </head>
 <body>
@@ -725,17 +921,21 @@
         <button id="btn-view-card" class="view-btn">🎴 卡牌相簿</button>
       </div>
 
-      <div>
+      <div class="toolbar-actions">
         <button id="add-item-btn" class="btn btn-success">➕ 新增物品 (列)</button>
         <button id="delete-item-btn" class="btn btn-danger">🗑️ 刪除最後一列</button>
         <button id="add-col-btn" class="btn btn-warning">➕ 新增欄位 (欄)</button>
         <button id="del-col-btn" class="btn btn-danger">🗑️ 刪除自訂欄位</button>
-        <button id="export-csv-btn" class="btn btn-secondary">📥 匯出 CSV</button>
+        <button id="export-excel-btn" class="btn btn-excel">📊 匯出 Excel</button>
+        <button id="export-pdf-btn" class="btn btn-pdf">🖨️ 匯出完整 PDF</button>
         <button id="export-json-btn" class="btn btn-secondary">💾 備份 JSON</button>
         <button id="import-btn" class="btn btn-warning">📤 匯入 JSON 備份</button>
         <input type="file" id="import-file-input" accept=".json" style="display: none;">
       </div>
     </div>
+
+    <!-- PDF 列印專用區塊標題 1 -->
+    <div class="print-section-header">一、圖鑑收集明細表 (Collection Index Table)</div>
 
     <!-- 表格檢視區域 -->
     <div id="table-view-container" class="table-container">
@@ -757,6 +957,9 @@
         </tbody>
       </table>
     </div>
+
+    <!-- PDF 列印專用區塊標題 2 (自動換頁) -->
+    <div class="print-section-header print-card-page-break">二、圖鑑卡牌相簿總覽 (Collection Card Gallery)</div>
 
     <!-- 卡牌相簿區域 -->
     <div id="card-view-container" class="card-grid" style="display: none;">
@@ -932,8 +1135,6 @@
         const safeRarityName = item.rarity ? item.rarity.toLowerCase().replace(/[^a-z0-9]/g, '') : 'common';
         const rarityClass = `rarity-${safeRarityName}`;
         
-        // 判斷相簿亮燈機制：
-        // 當物品有填入名稱(且非預設)與圖案網址，或已被勾選收集/有計數時自動亮燈
         const hasValidName = item.name && item.name.trim() !== "" && !item.name.startsWith("物品 #");
         const hasValidImage = item.imageUrl && item.imageUrl.trim() !== "";
         const isCollected = item.astral || item.divine || item.void || item.ghost || (item.astralCount > 0);
@@ -1129,7 +1330,7 @@
       }
     });
 
-    // 需求 1：登入狀態監聽與遮罩控制
+    // 登入狀態監聽與遮罩控制
     onAuthStateChanged(auth, user => {
       if (user) {
         authModal.style.display = "none";
@@ -1185,7 +1386,8 @@
     tradeBtn.onclick = () => {
       let output = "【Throw a Coin - 收集圖鑑清單】\n";
       output += "-----------------------------\n";
-      Object.keys(itemsData).forEach(k => {
+      const sortedKeys = Object.keys(itemsData).sort((a, b) => itemsData[a].id - itemsData[b].id);
+      sortedKeys.forEach(k => {
         const item = itemsData[k];
         if (item.astral || item.divine || item.void || item.ghost || item.astralCount > 0) {
           output += `#${item.id} ${item.name} (${item.rarity}): `;
@@ -1207,19 +1409,108 @@
       alert("交易格式文字已複製！");
     };
 
-    // CSV 匯出
-    document.getElementById("export-csv-btn").onclick = () => {
-      let csvStr = "\uFEFFID,Name,Rarity,Astral,AstralCount,Divine,Void,Ghost\n";
-      Object.keys(itemsData).forEach(k => {
+    // === 一鍵匯出 Excel (.xlsx) ===
+    document.getElementById("export-excel-btn").onclick = () => {
+      if (typeof XLSX === "undefined") {
+        alert("Excel 匯出模組尚未載入完成，請確認網路連線後再試！");
+        return;
+      }
+
+      const sortedKeys = Object.keys(itemsData).sort((a, b) => itemsData[a].id - itemsData[b].id);
+      let astralCollected = 0, divineCollected = 0, voidCollected = 0, ghostCollected = 0, astralCountSum = 0;
+
+      // 1. 建立明細表資料列
+      const detailRows = sortedKeys.map(k => {
         const item = itemsData[k];
-        csvStr += `${item.id},"${item.name}","${item.rarity}",${item.astral ? "YES" : "NO"},${item.astralCount || 0},${item.divine ? "YES" : "NO"},${item.void ? "YES" : "NO"},${item.ghost ? "YES" : "NO"}\n`;
+        if (item.astral) astralCollected++;
+        if (item.divine) divineCollected++;
+        if (item.void) voidCollected++;
+        if (item.ghost) ghostCollected++;
+        astralCountSum += (item.astralCount || 0);
+
+        const row = {
+          "編號 (ID)": item.id,
+          "物品名稱 (Name)": item.name,
+          "稀有度 (Rarity)": item.rarity,
+          "ASTRAL": item.astral ? "✓ 已收集" : "-",
+          "ASTRAL COUNT": item.astralCount || 0,
+          "DIVINE": item.divine ? "✓ 已收集" : "-",
+          "VOID": item.void ? "✓ 已收集" : "-",
+          "GHOST": item.ghost ? "✓ 已收集" : "-",
+          "圖片網址 (Image URL)": item.imageUrl || ""
+        };
+
+        // 納入所有自訂欄位
+        customColumns.forEach(col => {
+          const val = item.extraFields ? item.extraFields[col.key] : undefined;
+          if (col.type === "boolean") {
+            row[col.name.toUpperCase()] = val ? "✓ 已收集" : "-";
+          } else {
+            row[col.name.toUpperCase()] = val || 0;
+          }
+        });
+
+        return row;
       });
-      const blob = new Blob([csvStr], { type: "text/csv;charset=utf-8;" });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `ThrowACoin_Tracker_${new Date().toISOString().slice(0,10)}.csv`;
-      a.click();
+
+      const totalCount = sortedKeys.length || 1;
+
+      // 2. 建立統計總覽資料列
+      const summaryRows = [
+        { "統計項目": "專案名稱", "數值 / 進度": "Roblox Throw a Coin — Collection Index Tracker" },
+        { "統計項目": "匯出時間", "數值 / 進度": new Date().toLocaleString("zh-TW") },
+        { "統計項目": "雲端最後更新時間", "數值 / 進度": lastUpdatedTime },
+        { "統計項目": "圖鑑總物品數", "數值 / 進度": sortedKeys.length },
+        { "統計項目": "Astral 收集進度", "數值 / 進度": `${astralCollected} / ${sortedKeys.length} (${Math.round((astralCollected / totalCount) * 100)}%)` },
+        { "統計項目": "Divine 收集進度", "數值 / 進度": `${divineCollected} / ${sortedKeys.length} (${Math.round((divineCollected / totalCount) * 100)}%)` },
+        { "統計項目": "Void 收集進度", "數值 / 進度": `${voidCollected} / ${sortedKeys.length} (${Math.round((voidCollected / totalCount) * 100)}%)` },
+        { "統計項目": "Ghost 收集進度", "數值 / 進度": `${ghostCollected} / ${sortedKeys.length} (${Math.round((ghostCollected / totalCount) * 100)}%)` },
+        { "統計項目": "Astral 持有總數量", "數值 / 進度": astralCountSum }
+      ];
+
+      const wb = XLSX.utils.book_new();
+      const wsDetail = XLSX.utils.json_to_sheet(detailRows);
+      const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+
+      // 自動設定欄寬以提升可讀性
+      wsDetail["!cols"] = [
+        { wch: 10 }, // ID
+        { wch: 24 }, // Name
+        { wch: 16 }, // Rarity
+        { wch: 14 }, // Astral
+        { wch: 16 }, // Astral Count
+        { wch: 14 }, // Divine
+        { wch: 14 }, // Void
+        { wch: 14 }, // Ghost
+        { wch: 36 }, // Image URL
+        ...customColumns.map(() => ({ wch: 16 }))
+      ];
+      wsSummary["!cols"] = [{ wch: 24 }, { wch: 45 }];
+
+      XLSX.utils.book_append_sheet(wb, wsDetail, "Collection_Index");
+      XLSX.utils.book_append_sheet(wb, wsSummary, "Summary_Stats");
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `ThrowACoin_Tracker_${dateStr}.xlsx`);
+    };
+
+    // === 一鍵匯出所有頁面 PDF (包含統計儀表板 + 完整表格 + 卡牌相簿) ===
+    document.getElementById("export-pdf-btn").onclick = () => {
+      // 若目前有輸入搜尋關鍵字，先暫時清空以確保匯出「所有頁面與完整資料」
+      const previousSearch = searchInput.value;
+      if (previousSearch !== "") {
+        searchInput.value = "";
+        render();
+      }
+
+      // 稍微延遲確保 DOM 完整渲染後喚起高解析度列印/存為 PDF
+      setTimeout(() => {
+        window.print();
+        if (previousSearch !== "") {
+          searchInput.value = previousSearch;
+          render();
+        }
+      }, 150);
     };
 
     // JSON 備份與匯入
